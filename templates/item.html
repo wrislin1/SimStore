@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Receipt{% endblock %}
+{% block content %}
+    {% if data %}
+      <h2>{{data['ItemName']}}</h2>
+      <p>Price: {{data['price']}}</p>
+      <p>Available: {{data['stock']}}</p>
+      <form name="Buy" action="{{url_for('itemInfo',name=data['ItemName'])}}" method="post">
+        {% if data['stock'] != 0 %}
+        <input type="number" name="count" value="1" min="1" max="{{data['stock']}}">
+        <button type="submit" name="Cart" formaction="{{url_for('itemInfo',name=data['ItemName'])}}">Add to Cart</button>
+        <button type="submit" name="Buy" formaction="{{url_for('BuyNow',name=data['ItemName'])}}">Buy Now</button>
+        {% else %}
+        <h2>Sold Out</h2>
+        {% endif %}
+      </form>
+    {% else %}
+      <h1>You Failed</h1>
+    {% endif %}
+{% endblock %}

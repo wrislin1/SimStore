@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}Confirmation{% endblock %}
+
+{% block content %}
+    {% if data %}
+      <h1>Receipt</h1>
+      <p>Date: {{data['date']}}</p>
+      <p>Receipt#: {{data['ReceiptId']}}</p>
+      <p>Bill to:</p> <br>
+      <p>John Doe</p><br><br>
+      <p>Send To:</p><br>
+      <p>John Doe</p>
+      <table>
+        <tr>
+          <th>QTY</th>
+          <th>Description</th>
+          <th>Price</th>
+          <th>Total</th>
+        </tr>
+        {% for d in data['Items'] %}
+        <tr>
+          <td>{{d['Amount']}}</td>
+          <td>{{d['ItemName']}}</td>
+          <td>${{d['price']}}</td>
+          <td>${{d['TotalCost']}} </td>
+        </tr>
+        {% endfor %}
+        <tr>
+          <td></td>
+          <td></td>
+          <td>SubTotal</td>
+          <td>${{data['SubTotal']}}</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td>Sales Tax</td>
+          <td>9.5%</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td><strong>Total</strong></td>
+          <td>${{data['SubTotal']|float * 0.095+data['SubTotal']|float}}</td>
+        </tr>
+      </table>
+
+    {% else %}
+      <h1>You Failed</h1>
+    {% endif %}
+{% endblock %}

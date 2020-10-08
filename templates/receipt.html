@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Receipt{% endblock %}
+{% block content %}
+    {% if data %}
+    <div class="row">
+
+
+      <div class="col">
+      <h1>Receipt</h1>
+      <p>Date: {{data['date']}}</p>
+      <p>Receipt#: {{data['ReceiptId']}}</p>
+      </div>
+        <div class="col">
+      <p>Bill to:<br>
+      John Doe<br>
+      123 Fake Street<br>
+      USA
+    </p>
+        </div>
+        <div class="col">
+          <p>Ship to:<br>
+          John Doe<br>
+          123 Fake Street<br>
+          USA
+        </p>
+    </div>
+  </div>
+
+      <table>
+        <tr>
+          <th>QTY</th>
+          <th>Description</th>
+          <th>Price</th>
+          <th>Total</th>
+        </tr>
+        {% for d in data['Items'] %}
+        <tr>
+          <td>{{d['Amount']}}</td>
+          <td>{{d['ItemName']}}</td>
+          <td>${{d['price']}}</td>
+          <td>${{d['TotalCost']}} </td>
+        </tr>
+        {% endfor %}
+        <tr>
+          <td></td>
+          <td></td>
+          <td>SubTotal</td>
+          <td>${{data['SubTotal']}}</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td>Sales Tax</td>
+          <td>9.5%</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td><strong>Total</strong></td>
+          <td>${{data['SubTotal']|float * 0.095+data['SubTotal']|float}}</td>
+        </tr>
+      </table>
+
+    {% else %}
+      <h1>You Failed</h1>
+    {% endif %}
+    {% endblock %}

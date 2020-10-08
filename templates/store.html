@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block title %}Store{% endblock %}
+{% block content %}
+<h3>Welcome {{session['username']}}</h3>
+    <ul class = "list-group">
+      {% for store in stores %}
+      <li class="list-group-item" ><a href="{{url_for('itemInfo',name=store['ItemName'])}}">{{store['ItemName']}}</a><p><br>
+        Price: ${{store['price']}}<br>
+        Available: {{store['stock']}}</p>
+      </li>
+      {% endfor %}
+    </ul>
+{% endblock %}

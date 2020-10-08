@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+
+{% block title %}Summary{% endblock %}
+
+{% block content %}
+    <form name=search class="search" action="{{url_for('Summary')}}" method="post">
+      <input type="text" name="SearchBar">
+      <input type="submit" name="Submit">
+    </form>
+    <form name="Sort" action="index.html" method="post">
+      <button type="submit" name="sortb" formaction="{{url_for('SortDate')}}" >Sort by Date</button>
+      <button type="submit" name="sortb" formaction="{{url_for('SortPrice')}}">Sort by Total Spent</button>
+    </form>
+
+    <ul class = "list-group">
+      {% for receipt in receipts %}
+      <li class="list-group-item"><a href="{{url_for('ReceiptInfo',id=receipt['ReceiptId'])}}">Receipt#: {{receipt['ReceiptId']}}</a> <p><br>
+        Purchase Date: {{receipt['date']}}<br> Total Sum: {{receipt['SubTotal']}}</p></li>
+      {% else %}
+      <li><em>No Receipts Found</em></li>
+      {% endfor %}
+    </ul>
+{% endblock %}
