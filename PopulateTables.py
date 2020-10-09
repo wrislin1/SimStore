@@ -1,6 +1,8 @@
 import boto3
 import datetime
 
+
+
 def checkForTable(tableName):
     table_exist=False
     dynamodb = boto3.client('dynamodb', endpoint_url="http://localhost:8000")
@@ -41,12 +43,12 @@ def CreateStoreTable():
     else:
         return 'MyStore Table Exist '
 
-def CreateShoppingCart():
-    table_exist=checkForTable("ShoppingCart")
+def CreateShoppingCart(name):
+    table_exist=checkForTable(name)
     if not table_exist:
         dynamodb = boto3.resource('dynamodb', endpoint_url="http://localhost:8000")
         dynamodb.create_table(
-            TableName='ShoppingCart',
+            TableName=name,
             KeySchema=[
                 {
                     'AttributeName': 'ItemName',
@@ -69,12 +71,12 @@ def CreateShoppingCart():
     else:
         return 'Shopping Cart Exist '
 
-def CreateReceiptTable():
-    table_exist=checkForTable("Receipt")
+def CreateReceiptTable(name):
+    table_exist=checkForTable(name)
     if not table_exist:
         dynamodb = boto3.resource('dynamodb', endpoint_url="http://localhost:8000")
         dynamodb.create_table(
-            TableName='Receipt',
+            TableName=name,
             KeySchema=[
                 {
                     'AttributeName': 'ReceiptId',
@@ -93,7 +95,8 @@ def CreateReceiptTable():
                 'WriteCapacityUnits': 10
                 }
                 )
-        PopulateReceipt()
+        if name == 'wrislin_Receipts':
+            PopulateReceipt()
         return 'Receipt Table Created '
     else:
         return 'Receipt Table Exist '
@@ -169,6 +172,6 @@ def PopulateReceipt():
         {"ReceiptId":10, "SubTotal": 17,"Items":[{"ItemName":"Item16","price": 17,"Amount":1, 'TotalCost':17}],"date":"2020-10-02"},
         {"ReceiptId":11, "SubTotal": 53,"Items":[{"ItemName":"Item18","price": 53,"Amount":1, 'TotalCost':53}], "date":"2019-01-13"},
         {"ReceiptId":12, "SubTotal": 30,"Items":[{"ItemName":"Item14","price": 30,"Amount":1, 'TotalCost':30}], "date":"2020-08-23"}]
-    table=dynamodb.Table("Receipt")
+    table=dynamodb.Table("wrislin_Receipts")
     for receipt in ReceiptEntries:
         table.put_item(Item=receipt)

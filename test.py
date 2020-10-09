@@ -8,11 +8,10 @@ app = Flask(__name__)
 app.secret_key = b'87tz#\x00"\xcc\x8a-\xa03L\x960\x13'
 
 message=PopulateTables.CreateTableUsers()
-message+=PopulateTables.CreateReceiptTable()
 message+=PopulateTables.CreateStoreTable()
-message+=PopulateTables.CreateShoppingCart()
 print(message)
-
+ShoppingCart=""
+Receipts=""
 
 @app.route('/hello/')
 @app.route('/hello/<name>')
@@ -21,18 +20,23 @@ def hello(name=None):
 
 @app.route('/login',methods=['GET','POST'])
 def login():
+    global ShoppingCart
+    global Receipts
     if request.method=='GET':
         return render_template('login.html')
     else:
         users=List('Users')
+        print (users)
         for user in users:
+            print(user)
             if user['username'] == request.form['username'] and user['password'] == request.form['password']:
                 session['username'] = request.form['username']
-                if 'shoppingcart' in session:
-                    session['shoppincart']=[];
+                ShoppingCart = session['username']+'_ShoppingCart'
+                Receipts=session['username']+'_Receipts'
+                PopulateTables.CreateShoppingCart(ShoppingCart)
+                PopulateTables.CreateReceiptTable(Receipts)
                 return redirect(url_for('ViewStore'))
-            else:
-                return redirect(url_for('login'))
+        return redirect(url_for('login'))
 @app.route('/logout')
 def logout():
     session.pop('username', None)
@@ -45,13 +49,14 @@ def index():
     else:
         return redirect(url_for('login'))
 
+
 @app.route('/store')
 def ViewStore():
     return render_template('store.html',stores=List('MyStore'))
 
 @app.route('/summary',methods=['POST','GET'])
 def Summary():
-    data=List('Receipt')
+    data=List(Receipts)
     if request.method=='GET':
         for d in data:
             date=dateutil.parser.parse(d["date"])
@@ -71,12 +76,29 @@ def Summary():
 @app.route('/receipt/<id>')
 def ReceiptInfo(id=None):
     dynamodb = boto3.resource('dynamodb', endpoint_url="http://localhost:8000")
-    entry=dynamodb.Table("Receipt").get_item(Key={'ReceiptId':int(id)})
+    entry=dynamodb.Table(Receipts).get_item(Key={'ReceiptId':int(id)})
     entry=entry['Item']
     print(entry)
     print('-------------------------------------------------------------------------------------------------------------------------\n')
     print(entry)
     return render_template('receipt.html', data=entry)
+
+@app.route('/newuser',methods=['POST','GET'])
+def NewUser():
+    if request.method=='GET':
+        return render_template('newuser.html')
+    else:
+        table=List('Users')
+        for user in table:
+            if user['username']==request.form['username']:
+                return redirect(url_for('NewUser'))
+        entry={'username':request.form['username'],'password':request.form['password']}
+        dynamodb=boto3.resource('dynamodb', endpoint_url="http://localhost:8000")
+        table=dynamodb.Table('Users')
+        table.put_item(Item=entry)
+        print(List('Users'))
+        return redirect(url_for('login'))
+
 
 @app.route('/item/<name>',methods=['POST','GET'])
 def itemInfo(name=None):
@@ -93,40 +115,43 @@ def itemInfo(name=None):
 def CheckOut():
     if request.method=='POST':
         dynamodb = boto3.resource('dynamodb', endpoint_url="http://localhost:8000")
-        table= dynamodb.Table('Receipt')
+        table= dynamodb.Table(Receipts)
         date=datetime.datetime.now()
-        entry ={'ReceiptId': len(List('Receipt'))+1,'SubTotal':0,'Items': List('ShoppingCart'),'date':datetime.datetime.now().strftime("%Y-%m-%d")}
+        entry ={'ReceiptId': len(List(Receipts))+1,'SubTotal':0,'Items': List(ShoppingCart),'date':datetime.datetime.now().strftime("%Y-%m-%d")}
         for e in entry['Items']:
             entry['SubTotal']+=e['TotalCost']
         table.put_item(Item=entry)
-        table= dynamodb.Table('ShoppingCart')
+        table= dynamodb.Table(ShoppingCart)
         table.delete()
-        PopulateTables.CreateShoppingCart()
-        table= dynamodb.Table('Receipt')
-        receipt=table.get_item(Key={'ReceiptId':len(List('Receipt'))})
+        PopulateTables.CreateShoppingCart(ShoppingCart)
+        table= dynamodb.Table(Receipts)
+        receipt=table.get_item(Key={'ReceiptId':len(List(Receipts))})
         return render_template('confirmation.html', data=receipt['Item'])
-    return render_template('checkout.html', data=List('ShoppingCart'))
+    else:
+        return render_template('checkout.html', data=List(ShoppingCart))
 
 
 def ManagePost(name,request):
-    print(request.form)
     dynamodb = boto3.resource('dynamodb', endpoint_url="http://localhost:8000")
-    table=dynamodb.Table("ShoppingCart")
+    table=dynamodb.Table(ShoppingCart)
     temp=dynamodb.Table("MyStore").get_item(Key={'ItemName':name})
     item=temp['Item']
     changed=False
     entry={'ItemName': name,'Amount': Decimal(request.form['count']),'price':Decimal(item['price']), 'TotalCost':Decimal(request.form['count'])*Decimal(item['price']) }
-    table=dynamodb.Table("ShoppingCart")
-    for i in List('ShoppingCart'):
+    table=dynamodb.Table(ShoppingCart)
+    for i in List(ShoppingCart):
         if name == i['ItemName']:
+
             table.update_item(Key={'ItemName':name},UpdateExpression="set Amount=:a,TotalCost=:t",ExpressionAttributeValues={':a':i['Amount']+Decimal(request.form['count']),':t':i['TotalCost']+i['TotalCost']*Decimal(request.form['count'])})
             changed=True
     if not changed:
         table.put_item(Item=entry)
     table=dynamodb.Table("MyStore")
-    temp=dynamodb.Table("MyStore").get_item(Key={'ItemName':name})
-    table.update_item(Key={'ItemName':name},UpdateExpression="set stock=:s",ExpressionAttributeValues={':s':temp['Item']['stock']-Decimal(request.form['count'])})
-    temp=dynamodb.Table("MyStore").get_item(Key={'ItemName':name})
+    entry=dynamodb.Table("MyStore").get_item(Key={'ItemName':name})
+    table.update_item(Key={'ItemName':name},UpdateExpression="set stock=:s",ExpressionAttributeValues={':s':entry['Item']['stock']-Decimal(request.form['count'])})
+    entry=dynamodb.Table("MyStore").get_item(Key={'ItemName':name})
+    #print(ShoppingCart)
+    #print(List(ShoppingCart),"\n")
 
 def dateSort(e):
   return e["date"]
@@ -137,13 +162,13 @@ def priceSort(e):
 @app.route('/buynow/<name>',methods=['POST'])
 def BuyNow(name):
     dynamodb = boto3.resource('dynamodb', endpoint_url="http://localhost:8000")
-    table=dynamodb.Table("ShoppingCart")
+    table=dynamodb.Table(ShoppingCart)
     temp=dynamodb.Table("MyStore").get_item(Key={'ItemName':name})
     item=temp['Item']
     changed=False
     entry={'ItemName': name,'Amount': Decimal(request.form['count']),'price':Decimal(item['price']), 'TotalCost':Decimal(request.form['count'])*Decimal(item['price']) }
-    table=dynamodb.Table("ShoppingCart")
-    for i in List('ShoppingCart'):
+    table=dynamodb.Table(ShoppingCart)
+    for i in List(ShoppingCart):
         if name == i['ItemName']:
             table.update_item(Key={'ItemName':name},UpdateExpression="set Amount=:a,TotalCost=:t",ExpressionAttributeValues={':a':i['Amount']+Decimal(request.form['count']),':t':i['TotalCost']+i['TotalCost']*Decimal(request.form['count'])})
             changed=True
@@ -153,12 +178,12 @@ def BuyNow(name):
     temp=dynamodb.Table("MyStore").get_item(Key={'ItemName':name})
     table.update_item(Key={'ItemName':name},UpdateExpression="set stock=:s",ExpressionAttributeValues={':s':temp['Item']['stock']-Decimal(request.form['count'])})
     temp=dynamodb.Table("MyStore").get_item(Key={'ItemName':name})
-    return render_template('checkout.html', data=List('ShoppingCart'))
+    return render_template('checkout.html', data=List(ShoppingCart))
 
 @app.route('/delete',methods=['POST'])
 def Delete():
     dynamodb=boto3.resource('dynamodb',endpoint_url="http://localhost:8000")
-    table=dynamodb.Table('ShoppingCart')
+    table=dynamodb.Table(ShoppingCart)
     item=table.get_item(Key={'ItemName':request.form['Delete']})
     item=item['Item']
     store=dynamodb.Table('MyStore')
@@ -166,17 +191,17 @@ def Delete():
     old=old['Item']
     store.update_item(Key={'ItemName':request.form['Delete']},UpdateExpression="set stock=:s",ExpressionAttributeValues={':s':old['stock']+Decimal(item['Amount'])})
     table.delete_item(Key={'ItemName': request.form['Delete']})
-    return render_template('checkout.html', data=List('ShoppingCart'))
+    return render_template('checkout.html', data=List(ShoppingCart))
 
 @app.route('/sortdate',methods=['POST'])
 def SortDate():
-    data=List('Receipt')
+    data=List(Receipts)
     data.sort(reverse=True,key=dateSort)
     return render_template('summary.html',receipts=data)
 
 @app.route('/sortprice',methods=['POST'])
 def SortPrice():
-    data=List('Receipt')
+    data=List(Receipts)
     data.sort(reverse=True,key=priceSort)
     return render_template('summary.html',receipts=data)
 
